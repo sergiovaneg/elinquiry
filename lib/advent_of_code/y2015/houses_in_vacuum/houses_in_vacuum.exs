@@ -57,10 +57,13 @@ defmodule AdventOfCode.Y2015.HousesInVacuum do
     |> Enum.group_by(fn {_, k} -> rem(k, n_santas) end, fn {v, _} -> v end)
     |> Map.values()
     # Instructions split for each santa
-    |> Enum.map(fn x ->
-      x |> Enum.reduce(%State{}, &update_state/2)
-    end)
-    |> Enum.reduce(%{}, fn state, visited ->
+    |> Task.async_stream(
+      fn x ->
+        x |> Enum.reduce(%State{}, &update_state/2)
+      end,
+      ordered: false
+    )
+    |> Enum.reduce(%{}, fn {:ok, state}, visited ->
       Map.merge(visited, state.visited, fn _, v1, v2 -> v1 or v2 end)
     end)
     |> Enum.count(fn {_, v} -> v end)
