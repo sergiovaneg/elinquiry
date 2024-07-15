@@ -94,14 +94,7 @@ defmodule AdventOfCode.Y2015.AssemblyRequired do
       |> Enum.map(&parse_instruction/1)
       |> Enum.reduce(%{}, &Map.merge/2)
 
-    cache =
-      registry
-      |> Map.keys()
-      |> Enum.reduce(%{}, fn key, cache ->
-        registry[key].(registry, cache)
-      end)
-
-    cache["a"]
+    registry["a"].(registry, %{})["a"]
   end
 
   def part2(contents, a) do
