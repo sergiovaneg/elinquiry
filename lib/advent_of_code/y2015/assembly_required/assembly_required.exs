@@ -102,10 +102,7 @@ end
 
 contents = File.read!("./input.txt") |> String.trim()
 
-a =
-  contents
-  |> AssemblyRequired.part1()
-
+a = contents |> AssemblyRequired.part1()
 a |> IO.puts()
 
 contents |> AssemblyRequired.part2(a) |> IO.puts()
