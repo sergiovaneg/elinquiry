@@ -1,4 +1,6 @@
-defmodule LookSay do
+alias AdventOfCode.Y2015.LookSay
+
+defmodule AdventOfCode.Y2015.LookSay do
   @spec look_say(binary(), %{binary() => binary()}) ::
           {binary(), %{binary() => binary()}}
   def look_say(input, memory \\ %{}) do
