@@ -23,7 +23,7 @@ defmodule AdventOfCode.Y2015.YardGif do
           neighbourhood
           |> List.flatten()
           |> List.replace_at(4, false)
-          |> Enum.count(fn x -> x end)
+          |> Enum.count(&Function.identity/1)
 
         if m do
           count == 2 or count == 3
@@ -61,7 +61,7 @@ defmodule AdventOfCode.Y2015.YardGif do
       end
     )
     |> List.flatten()
-    |> Enum.count(fn x -> x end)
+    |> Enum.count(&Function.identity/1)
   end
 
   @spec part2(binary()) :: non_neg_integer()
@@ -83,7 +83,7 @@ defmodule AdventOfCode.Y2015.YardGif do
       end
     )
     |> List.flatten()
-    |> Enum.count(fn x -> x end)
+    |> Enum.count(&Function.identity/1)
   end
 end
 
