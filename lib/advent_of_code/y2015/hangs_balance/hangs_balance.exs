@@ -1,9 +1,12 @@
 alias AdventOfCode.Y2015.HangsBalance
 
 defmodule AdventOfCode.Y2015.HangsBalance do
+  @spec combine(_, 0) :: [[]]
   defp combine(_, 0), do: [[]]
+  @spec combine([], _) :: []
   defp combine([], _), do: []
 
+  @spec combine([...], pos_integer()) :: [[...], ...]
   defp combine([h | t], k) do
     (t |> combine(k)) ++
       for(
@@ -12,6 +15,7 @@ defmodule AdventOfCode.Y2015.HangsBalance do
       )
   end
 
+  @spec test_n([pos_integer(), ...], pos_integer(), pos_integer()) :: boolean()
   defp test_n(weights, 1, target), do: weights |> Enum.sum() == target
 
   defp test_n(weights, n, target) do
@@ -31,6 +35,7 @@ defmodule AdventOfCode.Y2015.HangsBalance do
     end)
   end
 
+  @spec solve_n([pos_integer(), ...], pos_integer()) :: pos_integer()
   defp solve_n(weights, n) do
     target = weights |> Enum.sum() |> Kernel./(n) |> round()
 
