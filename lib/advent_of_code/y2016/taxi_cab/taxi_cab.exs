@@ -2,10 +2,15 @@ alias AdventOfCode.Y2016.TaxiCab
 
 defmodule AdventOfCode.Y2016.TaxiCab do
   defp mutate_direction({vx, vy}, inst) do
-    if inst |> String.starts_with?("R") do
-      {vy, -vx}
-    else
-      {-vy, vx}
+    case inst |> String.first() do
+      "R" ->
+        {vy, -vx}
+
+      "L" ->
+        {-vy, vx}
+
+      "F" ->
+        {vx, vy}
     end
   end
 
@@ -20,9 +25,21 @@ defmodule AdventOfCode.Y2016.TaxiCab do
     {x, y, _, _} =
       contents
       |> String.split(", ")
-      |> Enum.reduce({0, 0, 0, 1}, fn inst, state -> execute_inst(inst, state) end)
+      |> Enum.reduce({0, 0, 0, 1}, fn inst, state ->
+        execute_inst(inst, state)
+      end)
 
     abs(x) + abs(y)
+  end
+
+  defp unroll_instruction(inst) do
+    n = inst |> String.slice(1..-1//1) |> String.to_integer()
+
+    [
+      (inst |> String.first()) <> "1"
+      | 2..n//1
+        |> Enum.map(fn _ -> "F1" end)
+    ]
   end
 
   @spec part2(binary()) :: non_neg_integer()
@@ -30,40 +47,23 @@ defmodule AdventOfCode.Y2016.TaxiCab do
     {{x, y, _, _}, _} =
       contents
       |> String.split(", ")
+      |> Enum.map(&unroll_instruction/1)
+      |> List.flatten()
       |> Enum.reduce_while(
-        {{0, 0, 0, 1}, %{{0, 0} => 1}},
-        fn inst, {{x0, y0, vx0, vy0}, registry} ->
-          {vx, vy} = {vx0, vy0} |> mutate_direction(inst)
+        {{0, 0, 0, 1}, %{{0, 0} => true}},
+        fn inst, {state, registry} ->
+          new_state = inst |> execute_inst(state)
+          {x, y, _, _} = new_state
 
-          {{x, y}, registry} =
-            1..(inst |> String.slice(1..-1//1) |> String.to_integer())
-            |> Enum.reduce_while(
-              {{x0, y0}, registry},
-              fn _, {{x0, y0}, registry} ->
-                pos = {x0 + vx, y0 + vy}
-
-                registry =
-                  registry
-                  |> Map.update(
-                    pos,
-                    1,
-                    &Kernel.+(&1, 1)
-                  )
-
-                if registry[pos] == 1 do
-                  {:cont, {pos, registry}}
-                else
-                  {:halt, {pos, registry}}
-                end
-              end
-            )
-
-          ret = {{x, y, vx, vy}, registry}
-
-          if registry[{x, y}] == 1 do
-            {:cont, ret}
+          if registry |> Map.get({x, y}, false) do
+            {:halt, {new_state, registry}}
           else
-            {:halt, ret}
+            {:cont,
+             {
+               new_state,
+               registry
+               |> Map.put({x, y}, true)
+             }}
           end
         end
       )
