@@ -2,7 +2,7 @@ alias AdventOfCode.Y2016.InternetProtocol
 
 defmodule AdventOfCode.Y2016.InternetProtocol do
   @abba_regex ~r/([a-z]{1})(?!\1)([a-z]{1})\2\1/
-  @ababab_regex ~r/(([a-z]{1})(?!\1)([a-z]{1})\3\2)\2\3\2/
+  @aba_regex ~r/\|.*([a-z]{1})(?!\1)([a-z]{1})\1.*\|.*\2\1\2/
 
   @spec contains_abba?(binary()) :: boolean()
   defp contains_abba?(text) do
@@ -25,6 +25,29 @@ defmodule AdventOfCode.Y2016.InternetProtocol do
     |> String.split("\n")
     |> Enum.count(&supports_tls?/1)
   end
+
+  @spec supports_ssl?(binary()) :: boolean()
+  defp supports_ssl?(ip) do
+    segments =
+      ip
+      |> String.split(["[", "]"])
+
+    brackets = segments |> Enum.drop_every(2)
+    suffix = segments |> Enum.take_every(2) |> Enum.join(",")
+
+    brackets
+    |> Enum.any?(fn prefix ->
+      ("|" <> prefix <> "|" <> suffix)
+      |> String.match?(@aba_regex)
+    end)
+  end
+
+  @spec part2(binary()) :: non_neg_integer()
+  def part2(contents) do
+    contents
+    |> String.split("\n")
+    |> Enum.count(&supports_ssl?/1)
+  end
 end
 
 contents = File.read!("./input.txt") |> String.trim()
@@ -33,6 +56,6 @@ contents
 |> InternetProtocol.part1()
 |> IO.inspect()
 
-"aba[bab]xyz"
-|> String.match?(~r/(([a-z]{1})(?!\2)([a-z]{1})\2)/)
-|> IO.puts()
+contents
+|> InternetProtocol.part2()
+|> IO.inspect()
