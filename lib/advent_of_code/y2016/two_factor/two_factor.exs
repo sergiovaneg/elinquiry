@@ -15,13 +15,12 @@ defmodule AdventOfCode.Y2016.TwoFactor do
   @spec rect(screen_state(), pos_integer(), pos_integer()) :: screen_state()
   defp rect(x0, a, b) do
     {top, bottom} = x0 |> Enum.split(b)
-    left = "#" |> List.duplicate(a)
 
     (top
      |> Enum.map(fn row ->
        {_, right} = row |> Enum.split(a)
 
-       left ++ right
+       1..a |> Enum.reduce(right, fn _, row -> ["#" | row] end)
      end)) ++ bottom
   end
 
@@ -37,13 +36,13 @@ defmodule AdventOfCode.Y2016.TwoFactor do
       top ++ bottom
     end)
     |> Enum.reverse()
-    |> then(fn rev_new_col ->
-      x0
-      |> Enum.reverse()
-      |> Enum.zip_reduce(rev_new_col, [], fn row, e, acc ->
+    |> Enum.zip_reduce(
+      x0 |> Enum.reverse(),
+      [],
+      fn e, row, x ->
         [row |> List.replace_at(j, e) | acc]
-      end)
-    end)
+      end
+    )
   end
 
   @spec rot_row(screen_state(), non_neg_integer(), pos_integer()) ::
