@@ -111,14 +111,14 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
       states
       |> Enum.flat_map(&get_next_generation/1)
       |> Enum.uniq_by(&hash_state/1)
-      |> Enum.filter(&(not is_map_key(rec, &1 |> hash_state())))
+      |> Enum.filter(&(not is_map_key(rec, hash_state(&1))))
 
-    if next_gen |> Enum.find(&is_final?/1) != nil do
+    if next_gen |> Enum.any?(&is_final?/1) do
       steps + 1
     else
       next_gen
       |> Enum.reduce(rec, fn state, record ->
-        record |> Map.put(state |> hash_state(), true)
+        record |> Map.put(hash_state(state), true)
       end)
       |> then(&iterate(next_gen, steps + 1, &1))
     end
@@ -136,14 +136,14 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
       ~r/([a-z]+) generator/
       |> Regex.scan(line, capture: :all_but_first)
       |> Enum.map(fn [element] ->
-        (element |> String.capitalize() |> String.first()) <> "G"
+        (element |> String.first() |> String.capitalize()) <> "G"
       end)
 
     microchips =
       ~r/([a-z]+)-compatible microchip/
       |> Regex.scan(line, capture: :all_but_first)
       |> Enum.map(fn [element] ->
-        (element |> String.capitalize() |> String.first()) <> "M"
+        (element |> String.first() |> String.capitalize()) <> "M"
       end)
 
     generators ++ microchips
