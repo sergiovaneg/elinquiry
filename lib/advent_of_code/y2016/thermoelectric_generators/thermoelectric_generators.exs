@@ -3,8 +3,33 @@ alias AdventOfCode.Y2016.ThermoelectricGenerators
 defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
   @typep floor :: [binary(), ...]
   @typep state :: {integer(), [floor, ...]}
-  @typep record :: %{state() => boolean()}
+  @typep record :: %{binary() => boolean()}
   @n_floors 4
+
+  @spec hash_state(state()) :: binary()
+  defp hash_state({elevator_idx, floors}) do
+    (elevator_idx |> to_string()) <>
+      (0..(@n_floors - 1)
+       |> Enum.map(fn idx ->
+         {pairs, singles} =
+           floors
+           |> Enum.at(idx)
+           |> Enum.group_by(&String.first/1)
+           |> Enum.split_with(fn {_k, v} -> length(v) == 2 end)
+
+         {gens, micros} =
+           singles
+           |> Enum.split_with(fn {_k, [v]} ->
+             v |> String.graphemes() |> List.last() == "G"
+           end)
+
+         to_string(idx) <>
+           String.duplicate("P", length(pairs)) <>
+           String.duplicate("G", length(gens)) <>
+           String.duplicate("M", length(micros))
+       end)
+       |> Enum.join())
+  end
 
   defp comb(0, _), do: [[]]
   defp comb(_, []), do: []
@@ -21,7 +46,7 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     else
       # Only Generators alone in this floor
       f
-      |> Enum.group_by(fn item -> item |> String.first() end)
+      |> Enum.group_by(&String.first/1)
       |> Map.values()
       |> Enum.filter(fn v -> length(v) == 1 end)
       |> List.flatten()
@@ -59,6 +84,14 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     top =
       (idx + 1)
       |> controlled_insert(to_remove, floors)
+      |> then(fn new_floors ->
+        max_length =
+          new_floors
+          |> Enum.map(&length/1)
+          |> Enum.max(fn -> 0 end)
+
+        new_floors |> Enum.filter(&(length(&1) == max_length))
+      end)
       |> Enum.map(fn new_floor ->
         {idx + 1,
          floors
@@ -69,6 +102,14 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     bot =
       (idx - 1)
       |> controlled_insert(to_remove, floors)
+      |> then(fn new_floors ->
+        min_length =
+          new_floors
+          |> Enum.map(&length/1)
+          |> Enum.min(fn -> 0 end)
+
+        new_floors |> Enum.filter(&(length(&1) == min_length))
+      end)
       |> Enum.map(fn new_floor ->
         {idx - 1,
          floors
@@ -77,24 +118,23 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
       end)
 
     (top ++ bot)
-    |> Enum.filter(&(not is_map_key(rec, &1)))
+    |> Enum.filter(&(not is_map_key(rec, &1 |> hash_state())))
   end
 
   defp iterate(states, steps, rec) do
-    states |> length() |> IO.puts()
-
     next_gen =
       states
       |> Enum.flat_map(fn state ->
         get_next_generation(state, rec)
       end)
+      |> Enum.uniq_by(&hash_state/1)
 
     if next_gen |> Enum.find(&is_final?/1) != nil do
       steps + 1
     else
       next_gen
       |> Enum.reduce(rec, fn state, record ->
-        record |> Map.put(state, true)
+        record |> Map.put(state |> hash_state(), true)
       end)
       |> then(&iterate(next_gen, steps + 1, &1))
     end
@@ -102,7 +142,7 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
 
   defp iterate(floors) do
     initial_state = {0, floors}
-    iterate([initial_state], 0, %{initial_state => true})
+    iterate([initial_state], 0, %{hash_state(initial_state) => true})
   end
 
   @spec parse_floor(binary()) :: floor()
@@ -131,10 +171,26 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     |> Enum.map(&parse_floor/1)
     |> iterate()
   end
+
+  @spec part2(binary()) :: non_neg_integer()
+  def part2(contents) do
+    contents
+    |> String.split("\n")
+    |> List.update_at(0, fn first_floor ->
+      first_floor <>
+        " Also, an elerium generator, an elerium-compatible microchip, a dilithium generator, and a dilithium-compatible microchip."
+    end)
+    |> Enum.map(&parse_floor/1)
+    |> iterate()
+  end
 end
 
 contents = File.read!("./input.txt") |> String.trim()
 
 contents
 |> ThermoelectricGenerators.part1()
+|> IO.puts()
+
+contents
+|> ThermoelectricGenerators.part2()
 |> IO.puts()
