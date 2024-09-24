@@ -10,23 +10,21 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
   defp hash_state({elevator_idx, floors}) do
     (elevator_idx |> to_string()) <>
       (0..(@n_floors - 1)
-       |> Enum.map(fn idx ->
+       |> Enum.map(fn current_idx ->
          {pairs, singles} =
            floors
-           |> Enum.at(idx)
+           |> Enum.at(current_idx)
            |> Enum.group_by(&String.first/1)
            |> Enum.split_with(fn {_k, v} -> length(v) == 2 end)
 
-         {gens, micros} =
-           singles
-           |> Enum.split_with(fn {_k, [v]} ->
-             v |> String.graphemes() |> List.last() == "G"
-           end)
-
-         to_string(idx) <>
+         to_string(current_idx) <>
            String.duplicate("P", length(pairs)) <>
-           String.duplicate("G", length(gens)) <>
-           String.duplicate("M", length(micros))
+           (singles
+            |> Enum.map(fn {_k, [v]} ->
+              v |> String.last()
+            end)
+            |> Enum.sort()
+            |> Enum.join())
        end)
        |> Enum.join())
   end
@@ -40,7 +38,7 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
 
   @spec is_valid_floor?(floor()) :: boolean()
   defp is_valid_floor?(f) do
-    if f |> Enum.all?(&String.contains?(&1, "M")) do
+    if f |> Enum.all?(&String.ends_with?(&1, "M")) do
       # Only Microchips in this floor
       true
     else
@@ -48,9 +46,9 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
       f
       |> Enum.group_by(&String.first/1)
       |> Map.values()
-      |> Enum.filter(fn v -> length(v) == 1 end)
+      |> Enum.filter(&(length(&1) == 1))
       |> List.flatten()
-      |> Enum.all?(&String.contains?(&1, "G"))
+      |> Enum.all?(&String.ends_with?(&1, "G"))
     end
   end
 
@@ -73,61 +71,47 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     end
   end
 
-  @spec get_next_generation(state(), record()) :: [state(), ...]
-  defp get_next_generation({idx, floors}, rec) do
-    current = floors |> Enum.at(idx)
+  @spec get_next_generation(state()) :: [state(), ...]
+  defp get_next_generation({current_idx, floors}) do
+    current = floors |> Enum.at(current_idx)
 
     to_remove =
       (comb(1, current) ++ comb(2, current))
       |> Enum.filter(fn subset -> is_valid_floor?(current -- subset) end)
 
-    top =
-      (idx + 1)
+    [{current_idx + 1, &Enum.max/1}, {current_idx - 1, &Enum.min/1}]
+    |> Enum.flat_map(fn {target_idx, target_fn} ->
+      target_idx
       |> controlled_insert(to_remove, floors)
-      |> then(fn new_floors ->
-        max_length =
-          new_floors
-          |> Enum.map(&length/1)
-          |> Enum.max(fn -> 0 end)
+      |> then(fn candidates ->
+        if Enum.empty?(candidates) do
+          []
+        else
+          target_len =
+            candidates
+            |> Enum.map(&length/1)
+            |> target_fn.()
 
-        new_floors |> Enum.filter(&(length(&1) == max_length))
+          candidates
+          |> Enum.filter(&(length(&1) == target_len))
+        end
       end)
       |> Enum.map(fn new_floor ->
-        {idx + 1,
+        {target_idx,
          floors
-         |> List.replace_at(idx + 1, new_floor)
-         |> List.update_at(idx, &(&1 -- new_floor))}
+         |> List.replace_at(target_idx, new_floor)
+         |> List.update_at(current_idx, &(&1 -- new_floor))}
       end)
-
-    bot =
-      (idx - 1)
-      |> controlled_insert(to_remove, floors)
-      |> then(fn new_floors ->
-        min_length =
-          new_floors
-          |> Enum.map(&length/1)
-          |> Enum.min(fn -> 0 end)
-
-        new_floors |> Enum.filter(&(length(&1) == min_length))
-      end)
-      |> Enum.map(fn new_floor ->
-        {idx - 1,
-         floors
-         |> List.replace_at(idx - 1, new_floor)
-         |> List.update_at(idx, &(&1 -- new_floor))}
-      end)
-
-    (top ++ bot)
-    |> Enum.filter(&(not is_map_key(rec, &1 |> hash_state())))
+    end)
   end
 
+  @spec iterate(state(), non_neg_integer(), record()) :: non_neg_integer()
   defp iterate(states, steps, rec) do
     next_gen =
       states
-      |> Enum.flat_map(fn state ->
-        get_next_generation(state, rec)
-      end)
+      |> Enum.flat_map(&get_next_generation/1)
       |> Enum.uniq_by(&hash_state/1)
+      |> Enum.filter(&(not is_map_key(rec, &1 |> hash_state())))
 
     if next_gen |> Enum.find(&is_final?/1) != nil do
       steps + 1
@@ -140,6 +124,7 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     end
   end
 
+  @spec iterate([floor()]) :: non_neg_integer()
   defp iterate(floors) do
     initial_state = {0, floors}
     iterate([initial_state], 0, %{hash_state(initial_state) => true})
