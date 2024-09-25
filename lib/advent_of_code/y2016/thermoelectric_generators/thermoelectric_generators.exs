@@ -58,17 +58,14 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     |> Enum.all?(&Enum.empty?/1)
   end
 
-  @spec controlled_insert(integer(), [[binary()]], [floor()]) :: [floor()]
-  defp controlled_insert(n, _, _) when n in [-1, @n_floors], do: []
+  @spec elevator_filter(integer(), [[binary()]], [floor()]) :: [floor()]
+  defp elevator_filter(n, _, _) when n in [-1, @n_floors], do: []
 
-  defp controlled_insert(n, subsets, floors) do
+  defp elevator_filter(n, subsets, floors) do
     target_floor = floors |> Enum.at(n)
 
-    for subset <- subsets,
-        candidate = subset ++ target_floor,
-        is_valid_floor?(candidate) do
-      candidate
-    end
+    subsets
+    |> Enum.filter(&is_valid_floor?(&1 ++ target_floor))
   end
 
   @spec get_next_generation(state()) :: [state(), ...]
@@ -82,7 +79,8 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
     [{current_idx + 1, &Enum.max/1}, {current_idx - 1, &Enum.min/1}]
     |> Enum.flat_map(fn {target_idx, target_fn} ->
       target_idx
-      |> controlled_insert(to_remove, floors)
+      |> elevator_filter(to_remove, floors)
+      # Optimal occupancy filter
       |> then(fn candidates ->
         if Enum.empty?(candidates) do
           []
@@ -96,17 +94,17 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
           |> Enum.filter(&(length(&1) == target_len))
         end
       end)
-      |> Enum.map(fn new_floor ->
+      |> Enum.map(fn candidate ->
         {target_idx,
          floors
-         |> List.replace_at(target_idx, new_floor)
-         |> List.update_at(current_idx, &(&1 -- new_floor))}
+         |> List.update_at(target_idx, &(&1 ++ candidate))
+         |> List.update_at(current_idx, &(&1 -- candidate))}
       end)
     end)
   end
 
-  @spec iterate(state(), non_neg_integer(), record()) :: non_neg_integer()
-  defp iterate(states, steps, rec) do
+  @spec iterate(record(), state(), non_neg_integer()) :: non_neg_integer()
+  defp iterate(rec, states, steps) do
     next_gen =
       states
       |> Enum.flat_map(&get_next_generation/1)
@@ -120,14 +118,14 @@ defmodule AdventOfCode.Y2016.ThermoelectricGenerators do
       |> Enum.reduce(rec, fn state, record ->
         record |> Map.put(hash_state(state), true)
       end)
-      |> then(&iterate(next_gen, steps + 1, &1))
+      |> iterate(next_gen, steps + 1)
     end
   end
 
   @spec iterate([floor()]) :: non_neg_integer()
   defp iterate(floors) do
     initial_state = {0, floors}
-    iterate([initial_state], 0, %{hash_state(initial_state) => true})
+    iterate(%{hash_state(initial_state) => true}, [initial_state], 0)
   end
 
   @spec parse_floor(binary()) :: floor()
