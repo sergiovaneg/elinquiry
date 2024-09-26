@@ -48,14 +48,14 @@ defmodule AdventOfCode.Y2016.OneTimePad do
 
     [new_hash | new_buffer] =
       hash_buffer
-      |> List.insert_at(
-        -1,
-        hasher.(current_idx + @buffer_size + 1)
-      )
 
     iterate(
       {new_hash, current_idx + 1},
-      new_buffer,
+      new_buffer
+      |> List.insert_at(
+        -1,
+        hasher.(current_idx + @buffer_size + 1)
+      ),
       found_hashes,
       hasher
     )
