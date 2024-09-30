@@ -3,35 +3,22 @@ alias AdventOfCode.Y2016.TimingEverything
 defmodule AdventOfCode.Y2016.TimingEverything do
   @typep disc :: {non_neg_integer(), pos_integer()}
 
-  def gcd(a, 0), do: a
-  def gcd(0, b), do: b
-  def gcd(a, b), do: gcd(b, Integer.mod(a, b))
+  defp extended_gcd(old_r, 0, old_s, _s, old_t, _t), do: {old_r, old_s, old_t}
 
-  def lcm(0, 0), do: 0
-  def lcm(a, b), do: div(a * b, gcd(a, b))
-
-  defp extended_gcd(_, 0, old_s, old_r), do: {old_s, old_r}
-
-  defp extended_gcd(s, r, old_s, old_r) do
+  defp extended_gcd(old_r, r, old_s, s, old_t, t) do
     q = div(old_r, r)
 
-    extended_gcd(old_s - q * s, old_r - q * r, s, r)
+    extended_gcd(r, old_r - q * r, s, old_s - q * s, t, old_t - q * t)
   end
 
   defp extended_gcd(a, b) do
-    {old_s, old_r} = extended_gcd(0, b, 1, a)
-
-    {
-      old_s,
-      if(b == 0, do: 0, else: div(old_r - old_s * a, b)),
-      old_r
-    }
+    extended_gcd(a, b, 1, 0, 0, 1)
   end
 
   @spec normalize_disc(disc(), non_neg_integer()) :: disc()
   defp normalize_disc({offset, period}, position),
     do: {
-      rem(position + offset, period),
+      Integer.mod(position + offset, period),
       period
     }
 
@@ -59,14 +46,20 @@ defmodule AdventOfCode.Y2016.TimingEverything do
       discs
       |> Enum.zip_with(1..length(discs), &normalize_disc/2)
       |> Enum.reduce({0, 1}, fn {tau_b, t_b}, {tau_a, t_a} ->
-        {s, _, g} = extended_gcd(t_a, t_b)
+        {g, s, _t} = extended_gcd(t_a, t_b)
         z = div(tau_a - tau_b, g)
 
-        t_c = lcm(t_a, t_b)
-        tau_c = Integer.mod(-z * s * t_a + tau_a, t_c)
+        t_c = div(t_a * t_b, g)
+        tau_c = Integer.mod(tau_a - z * s * t_a, t_c)
         {tau_c, t_c}
       end)
     end)
+    |> then(fn {tau, t} -> Integer.mod(t - tau, t) end)
+  end
+
+  def part2(contents) do
+    (contents <> "\nDisc #7 has 11 positions; at time=0, it is at position 0.")
+    |> part1()
   end
 end
 
@@ -74,4 +67,8 @@ contents = File.read!("./input.txt") |> String.trim()
 
 contents
 |> TimingEverything.part1()
+|> IO.inspect()
+
+contents
+|> TimingEverything.part2()
 |> IO.inspect()
